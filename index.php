@@ -4,7 +4,9 @@
  * Description: درگاه کریپتویی سواپ‌ولت برای ووکامرس (پرداخت رمزارزی) | SwapWallet crypto payment gateway for WooCommerce.
  * Author: SwapWallet
  * Author URI: https://swapwallet.app
- * Version: 1.0
+ * Version: 1.0.0
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 defined('ABSPATH') or die("SwapPay Wordpress Restricted Access");
