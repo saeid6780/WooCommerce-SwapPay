@@ -42,3 +42,8 @@ Crypto payment gateway plugin for WooCommerce that adds the **SwapWallet** payme
 - Main entry: `index.php`.
 
 After updating JS, clear caches (e.g., WP Rocket/Cloudflare) and hard-refresh checkout to load the latest script.
+
+## License
+
+Licensed under the GNU General Public License v2 or later.
+You should have received a copy of the GPL-2.0 license; if not, see [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html).
