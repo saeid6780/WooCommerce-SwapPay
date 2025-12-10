@@ -21,7 +21,7 @@ function swap_pay_init()
     require_once dirname(__FILE__) . '/class-wc-gateway-swap-pay.php';
 
     add_filter('woocommerce_payment_gateways', function ($gateways) {
-        $gateways[] = 'WC_Swap_Pay';
+        $gateways[] = 'SwapPay_WC_Gateway';
         return $gateways;
     });
 }
@@ -29,12 +29,12 @@ function swap_pay_init()
 add_action('rest_api_init', function () {
     register_rest_route('swap-pay/v1', '/webhook', [
         'methods' => 'POST',
-        'callback' => 'wc_swap_pay_handle_webhook',
+        'callback' => 'swap_pay_handle_webhook',
         'permission_callback' => '__return_true'
     ]);
 });
 
-function wc_swap_pay_handle_webhook(WP_REST_Request $request)
+function swap_pay_handle_webhook(WP_REST_Request $request)
 {
     $gateways = WC()->payment_gateways->payment_gateways();
     $gateway = $gateways['WC_Swap_Pay'] ?? null;
@@ -95,7 +95,7 @@ function wc_swap_pay_handle_webhook(WP_REST_Request $request)
     return new WP_REST_Response(['received' => true], 200);
 }
 
-function declare_swap_pay_cart_checkout_blocks_compatibility()
+function swap_pay_declare_cart_checkout_blocks_compatibility()
 {
 
     if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
@@ -104,7 +104,7 @@ function declare_swap_pay_cart_checkout_blocks_compatibility()
 }
 
 add_action('woocommerce_blocks_loaded', 'swap_pay_register_order_approval_payment_method_type');
-add_action('before_woocommerce_init', 'declare_swap_pay_cart_checkout_blocks_compatibility');
+add_action('before_woocommerce_init', 'swap_pay_declare_cart_checkout_blocks_compatibility');
 
 function swap_pay_register_order_approval_payment_method_type()
 {

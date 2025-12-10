@@ -1,4 +1,5 @@
 === درگاه پرداخت سواپ‌ولت | SwapWallet Payment Gateway ===
+SwapWallet crypto payment gateway for WooCommerce.
 Contributors: swapwallet
 Tags: woocommerce, crypto, payment, gateway
 Requires at least: 5.8

@@ -2,9 +2,9 @@
 
 defined("ABSPATH") or die("SwapPay Wordpress Restricted Access");
 
-if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
+if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
 
-    class WC_Swap_Pay extends WC_Payment_Gateway
+    class SwapPay_WC_Gateway extends WC_Payment_Gateway
     {
         private $api_key;
         private $username;
@@ -18,6 +18,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
         private $logger;
         private $language;
         private $show_icon;
+        private $temp_allowed_host;
 
         public function __construct()
         {
@@ -67,7 +68,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                 );
             }
 
-            add_action('woocommerce_api_' . strtolower(get_class($this)) . '', [$this, 'Return_from_swap_pay_Gateway']);
+            add_action('woocommerce_api_' . strtolower($this->id) . '', [$this, 'Return_from_swap_pay_Gateway']);
 
             add_action('admin_notices', [$this, 'admin_notice_missing_api_key']);
             add_action('admin_notices', [$this, 'admin_notice_missing_username']);
@@ -332,20 +333,25 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
 
         public function Return_from_swap_pay_Gateway()
         {
-            $order_id = isset($_GET['wc_order']) ? absint($_GET['wc_order']) : 0;
+            $nonce = isset($_GET['_wpnonce']) ? sanitize_text_field(wp_unslash($_GET['_wpnonce'])) : '';
+            if (!empty($nonce) && !wp_verify_nonce($nonce, 'swap_pay_return')) {
+                $this->add_failure_notice($this->t('invalid_transaction'));
+                $this->log('Return: invalid nonce', $_GET, 'warning');
+                $this->safe_redirect(wc_get_checkout_url());
+            }
+
+            $order_id = isset($_GET['wc_order']) ? absint(wp_unslash($_GET['wc_order'])) : 0;
             if (!$order_id) {
                 $this->add_failure_notice($this->t('missing_order'));
                 $this->log('Return: missing order id', $_GET, 'warning');
-                wp_redirect(wc_get_checkout_url());
-                exit;
+                $this->safe_redirect(wc_get_checkout_url());
             }
 
             $response = $this->get_invoice($order_id);
             if (is_wp_error($response) || !is_array($response)) {
                 $this->add_failure_notice($this->t('invoice_fetch_failed'));
                 $this->log('Return: invoice fetch failed', ['order_id' => $order_id, 'error' => $response], 'error');
-                wp_redirect(wc_get_checkout_url());
-                exit;
+                $this->safe_redirect(wc_get_checkout_url());
             }
 
             $order = wc_get_order($order_id);
@@ -357,8 +363,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
             if (!$order || ($response['status'] ?? null) !== 'OK' || !$status) {
                 $this->add_failure_notice($this->t('invalid_transaction'));
                 $this->log('Return: invalid response', ['order_id' => $order_id, 'response' => $response], 'warning');
-                wp_redirect(wc_get_checkout_url());
-                exit;
+                $this->safe_redirect(wc_get_checkout_url());
             }
 
             $this->log('Return: handling status', ['order_id' => $order_id, 'status' => $status]);
@@ -373,8 +378,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                     $Notice = str_replace("{support_code}", $support_code, $Notice);
                     wc_add_notice($Notice, 'success');
 
-                    wp_redirect(add_query_arg('wc_status', 'success', $this->get_return_url($order)));
-                    exit;
+                    $this->safe_redirect(add_query_arg('wc_status', 'success', $this->get_return_url($order)));
 
                 case 'EXPIRED':
                     $Message = $this->t('invoice_expired');
@@ -383,8 +387,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
 
                 case 'ACTIVE':
                     if ($payment_url) {
-                        wp_redirect($payment_url);
-                        exit;
+                        $this->safe_redirect($payment_url);
                     }
                     $Message = $this->t('payment_url_missing');
                     break;
@@ -402,8 +405,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
             $Notice = str_replace("{support_code}", $support_code, $Notice);
             $Notice = str_replace("{fault}", $Message, $Notice);
             wc_add_notice($Notice, 'error');
-            wp_redirect(wc_get_checkout_url());
-            exit;
+            $this->safe_redirect(wc_get_checkout_url());
         }
 
         private function add_failure_notice($message)
@@ -411,6 +413,27 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
             $Notice = wpautop(wptexturize($this->failed_massage));
             $Notice = str_replace("{fault}", $message, $Notice);
             wc_add_notice($Notice, 'error');
+        }
+
+        public function allow_temp_redirect_host($hosts)
+        {
+            if ($this->temp_allowed_host) {
+                $hosts[] = $this->temp_allowed_host;
+            }
+
+            return array_unique($hosts);
+        }
+
+        private function safe_redirect($url)
+        {
+            $host = wp_parse_url($url, PHP_URL_HOST);
+            if ($host) {
+                $this->temp_allowed_host = $host;
+                add_filter('allowed_redirect_hosts', [$this, 'allow_temp_redirect_host']);
+            }
+
+            wp_safe_redirect($url);
+            exit;
         }
 
         private function log($message, $context = [], $level = 'info')
@@ -562,14 +585,15 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                 $msg = ($this->language === 'en')
                     ? 'SwapWallet API key is empty. Go to gateway settings to complete it.'
                     : 'کد درگاه سواپ‌ولت خالی است. برای تکمیل مورد مربوطه به تنظیمات درگاه مراجعه کنید.';
+                $settings_url = esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'));
                 $message = sprintf(
                     '%s <a href="%s">%s</a>',
-                    $msg,
-                    admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'),
-                    ($this->language === 'en') ? 'Settings' : 'اینجا'
+                    esc_html($msg),
+                    $settings_url,
+                    esc_html(($this->language === 'en') ? 'Settings' : 'اینجا')
                 );
                 echo '<div class="notice notice-warning is-dismissible">';
-                echo '<p>' . $message . '</p>';
+                echo '<p>' . wp_kses_post($message) . '</p>';
                 echo '</div>';
             }
         }
@@ -581,14 +605,15 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                 $msg = ($this->language === 'en')
                     ? 'SwapWallet username is empty. Go to gateway settings to complete it.'
                     : 'نام کاربری درگاه سواپ‌ولت خالی است. برای تکمیل مورد مربوطه به تنظیمات درگاه مراجعه کنید.';
+                $settings_url = esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'));
                 $message = sprintf(
                     '%s <a href="%s">%s</a>',
-                    $msg,
-                    admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'),
-                    ($this->language === 'en') ? 'Settings' : 'اینجا'
+                    esc_html($msg),
+                    $settings_url,
+                    esc_html(($this->language === 'en') ? 'Settings' : 'اینجا')
                 );
                 echo '<div class="notice notice-warning is-dismissible">';
-                echo '<p>' . $message . '</p>';
+                echo '<p>' . wp_kses_post($message) . '</p>';
                 echo '</div>';
             }
         }
@@ -607,5 +632,9 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
         {
             return $this->description;
         }
+    }
+
+    if (!class_exists('WC_Swap_Pay')) {
+        class_alias(SwapPay_WC_Gateway::class, 'WC_Swap_Pay');
     }
 }
