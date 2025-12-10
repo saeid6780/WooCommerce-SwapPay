@@ -1,0 +1,43 @@
+name: Bump plugin version from tag
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g., 1.2.3). Defaults to tag name when triggered by tag."
+        required: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "PLUGIN_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "PLUGIN_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          fi
+
+      - name: Update plugin headers
+        run: |
+          v="${PLUGIN_VERSION}"
+          perl -pi -e "s/^ \\* Version: .*/ * Version: ${v}/" index.php
+          perl -pi -e "s/^Stable tag: .*/Stable tag: ${v}/" readme.txt
+
+      - name: Commit changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.php readme.txt
+          git commit -m "chore: bump version to ${PLUGIN_VERSION}" || echo "No changes"
+          git push
+
