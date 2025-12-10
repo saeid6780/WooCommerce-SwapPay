@@ -35,7 +35,7 @@ add_action('rest_api_init', function () {
 function wc_swap_pay_handle_webhook(WP_REST_Request $request)
 {
     $gateways = WC()->payment_gateways->payment_gateways();
-    $gateway  = $gateways['WC_Swap_Pay'] ?? null;
+    $gateway = $gateways['WC_Swap_Pay'] ?? null;
     if (!$gateway) {
         return new WP_REST_Response(['error' => 'gateway not found'], 500);
     }
@@ -97,7 +97,7 @@ function declare_swap_pay_cart_checkout_blocks_compatibility()
 {
 
     if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
-        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('cart_checkout_blocks',  __FILE__, true);
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('cart_checkout_blocks', __FILE__, true);
     }
 }
 

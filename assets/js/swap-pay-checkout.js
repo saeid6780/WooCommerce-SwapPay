@@ -36,6 +36,7 @@ const Swap_Pay_icon = hasIcon
         maxWidth: "64px",
         maxHeight: "64px",
         objectFit: "contain",
+        borderRadius: "8px",
       },
     })
   : null;

@@ -37,7 +37,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
             $this->description = $this->get_option('description');
             $this->network = strtoupper($this->get_option('network'));
             $this->username = $this->get_option('username');
-            $ttl_minutes = (int)$this->get_option('ttl');
+            $ttl_minutes = (int) $this->get_option('ttl');
             // API expects ttl between 300s and 21600s
             $ttl_minutes = max(5, min(360, $ttl_minutes));
             $this->ttl = $ttl_minutes * 60;
@@ -149,14 +149,14 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                     'type' => 'textarea',
                     'description' => $this->t('field_failed_description'),
                     'default' => $this->get_lang_text('failed_message'),
-            ],
-            'show_icon' => [
-                'title' => $this->t('field_show_icon_title'),
-                'label' => $this->t('field_show_icon_label'),
-                'type' => 'checkbox',
-                'default' => 'yes',
-                'description' => $this->t('field_show_icon_description'),
-            ],
+                ],
+                'show_icon' => [
+                    'title' => $this->t('field_show_icon_title'),
+                    'label' => $this->t('field_show_icon_label'),
+                    'type' => 'checkbox',
+                    'default' => 'yes',
+                    'description' => $this->t('field_show_icon_description'),
+                ],
             ];
         }
 
@@ -457,6 +457,9 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                     'field_success_description' => 'متن پیامی که میخواهید بعد از پرداخت موفق نمایش داده شود. از {support_code} برای نمایش کد رهگیری استفاده کنید.',
                     'field_failed_title' => 'پیام پرداخت ناموفق',
                     'field_failed_description' => 'متن پیامی که میخواهید بعد از پرداخت ناموفق نمایش داده شود. از {fault} برای دلیل خطا و {support_code} برای کد رهگیری استفاده کنید.',
+                    'field_show_icon_title' => 'نمایش آیکن در صفحه پرداخت',
+                    'field_show_icon_label' => 'آیکن سواپ‌ولت نمایش داده شود',
+                    'field_show_icon_description' => 'برای مخفی کردن آیکن در تسویه‌حساب کلاسیک و بلاک‌ها، تیک را بردارید.',
                     'error_gateway_connect' => 'خطای ارتباط با درگاه سواپ‌ولت. لطفاً بعداً تلاش کنید.',
                     'payment_error_prefix' => 'خطای پرداخت: ',
                     'generic_error' => 'خطایی رخ داد',
@@ -498,6 +501,9 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                     'field_success_description' => 'Text shown after successful payment. Use {support_code} to show the tracking code.',
                     'field_failed_title' => 'Failed payment message',
                     'field_failed_description' => 'Text shown after failed payment. Use {fault} for the error reason and {support_code} for the tracking code.',
+                    'field_show_icon_title' => 'Show icon on checkout',
+                    'field_show_icon_label' => 'Display the SwapWallet icon on checkout',
+                    'field_show_icon_description' => 'Uncheck to hide the icon in both classic and blocks checkout.',
                     'error_gateway_connect' => 'SwapWallet connection error. Please try again later.',
                     'payment_error_prefix' => 'Payment error: ',
                     'generic_error' => 'An error occurred',
@@ -556,7 +562,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                 $msg = ($this->language === 'en')
                     ? 'SwapWallet API key is empty. Go to gateway settings to complete it.'
                     : 'کد درگاه سواپ‌ولت خالی است. برای تکمیل مورد مربوطه به تنظیمات درگاه مراجعه کنید.';
-                $message = sprintf('%s <a href="%s">%s</a>',
+                $message = sprintf(
+                    '%s <a href="%s">%s</a>',
                     $msg,
                     admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'),
                     ($this->language === 'en') ? 'Settings' : 'اینجا'
@@ -574,7 +581,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('WC_Swap_Pay')) {
                 $msg = ($this->language === 'en')
                     ? 'SwapWallet username is empty. Go to gateway settings to complete it.'
                     : 'نام کاربری درگاه سواپ‌ولت خالی است. برای تکمیل مورد مربوطه به تنظیمات درگاه مراجعه کنید.';
-                $message = sprintf('%s <a href="%s">%s</a>',
+                $message = sprintf(
+                    '%s <a href="%s">%s</a>',
                     $msg,
                     admin_url('admin.php?page=wc-settings&tab=checkout&section=WC_Swap_Pay'),
                     ($this->language === 'en') ? 'Settings' : 'اینجا'
