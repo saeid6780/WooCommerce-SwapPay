@@ -31,7 +31,7 @@ final class Swap_Pay_Gateway_Blocks extends AbstractPaymentMethodType
                 'wp-html-entities',
                 'wp-i18n'
             ],
-            null,
+            defined('SWAPPAY_VERSION') ? SWAPPAY_VERSION : '1.0.2',
             true
         );
         return ['swap_pay_gateway-blocks-integration'];

@@ -16,7 +16,7 @@ Crypto payment gateway plugin for WooCommerce that adds the **SwapWallet** payme
 
 ## Installation
 
-1) Upload the plugin folder `woo-swappay` to `wp-content/plugins/`.
+1) Upload the plugin folder `swapwallet-swappay` to `wp-content/plugins/`.
 2) Activate **SwapWallet Payment Gateway** in **Plugins**.
 3) Go to **WooCommerce → Settings → Payments → SwapWallet** and enable the gateway.
 
