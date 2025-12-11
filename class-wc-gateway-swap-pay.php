@@ -237,7 +237,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'underPaidCoveragePercent' => $this->underPaidCoveragePercent,
                     'returnUrl' => $CallbackURL,
                     'orderId' => $order_id,
-                    'webhookUrl' => site_url('/wp-json/swap-pay/v1/webhook'),
+                    // Use rest_url to honor WP REST prefix, subdirectory installs, https, etc.
+                    'webhookUrl' => rest_url('swap-pay/v1/webhook'),
                     'customData' => null,
                 ])
             ]);
