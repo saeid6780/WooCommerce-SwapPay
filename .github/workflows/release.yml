@@ -1,0 +1,53 @@
+name: Build Release Package
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set version from tag
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Bump plugin version
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          perl -pi -e "s/^(Version:\s*).*/\$1$ENV{VERSION}/" index.php
+          perl -pi -e "s/^(Stable tag:\s*).*/\$1$ENV{VERSION}/" index.php
+          perl -pi -e "s/^(Stable tag:\s*).*/\$1$ENV{VERSION}/" readme.txt
+          perl -pi -e "s/define\\('SWAPPAY_VERSION',\\s*'[^']+'\\);/define('SWAPPAY_VERSION', '$ENV{VERSION}');/" index.php
+
+      - name: Create zip archive
+        run: |
+          zip -r swapwallet-swappay.zip . \
+            -x "swapwallet-swappay.zip" \
+               ".git/*" \
+               ".github/*" \
+               ".gitignore" \
+               "README.md"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: swapwallet-swappay ${{ steps.vars.outputs.version }}
+          files: swapwallet-swappay.zip
+
