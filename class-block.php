@@ -6,12 +6,12 @@ final class Swap_Pay_Gateway_Blocks extends AbstractPaymentMethodType
 {
 
     private $gateway;
-    protected $name = 'WC_Swap_Pay';
+    protected $name = 'SWAPPAY_WC_GATEWAY';
 
     public function initialize()
     {
         $this->settings = get_option('woocommerce_swap_pay_gateway_settings', []);
-        $this->gateway = new WC_Swap_Pay();
+        $this->gateway = new SWAPPAY_WC_GATEWAY();
     }
 
     public function is_active()
