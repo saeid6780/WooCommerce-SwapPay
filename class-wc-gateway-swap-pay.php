@@ -19,6 +19,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
         private $language;
         private $show_icon;
         private $temp_allowed_host;
+        private $icon_size;
 
         public function __construct()
         {
@@ -53,6 +54,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             $this->method_description = $this->get_option('description', $this->get_lang_text('method_description'));
             $this->show_icon = $this->get_option('show_icon', 'yes') === 'yes';
             $this->icon_url = $this->get_option('icon_url', '');
+            $this->icon_size = absint($this->get_option('icon_size', 40));
+            $this->icon_size = $this->icon_size > 0 ? $this->icon_size : 40;
 
             if (!empty(trim($this->icon_url))) {
                 $this->icon = esc_url_raw($this->icon_url);
@@ -170,6 +173,12 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'title' => $this->t('field_icon_title'),
                     'type' => 'text',
                     'description' => $this->t('field_icon_description'),
+                ],
+                'icon_size' => [
+                    'title' => $this->t('field_icon_size_title'),
+                    'type' => 'number',
+                    'default' => 40,
+                    'description' => $this->t('field_icon_size_description'),
                 ],
             ];
         }
@@ -498,6 +507,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_show_icon_description' => 'برای مخفی کردن آیکن در تسویه‌حساب کلاسیک و بلاک‌ها، تیک را بردارید.',
                     'field_icon_title' => 'آیکن سفارشی (URL)',
                     'field_icon_description' => 'در صورت تمایل آدرس تصویر دلخواه را وارد کنید، در غیر این صورت آیکن پیش‌فرض سواپ‌ولت نمایش داده می‌شود.',
+                    'field_icon_size_title' => 'اندازه آیکن (پیکسل)',
+                    'field_icon_size_description' => 'عرض آیکن نمایش داده‌شده در تسویه‌حساب کلاسیک و بلاک‌ها. برای حفظ تناسب، ارتفاع به‌صورت خودکار تنظیم می‌شود.',
                     'error_gateway_connect' => 'خطای ارتباط با درگاه سواپ‌ولت. لطفاً بعداً تلاش کنید.',
                     'payment_error_prefix' => 'خطای پرداخت: ',
                     'generic_error' => 'خطایی رخ داد',
@@ -544,6 +555,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_show_icon_description' => 'Uncheck to hide the icon in both classic and blocks checkout.',
                     'field_icon_title' => 'Custom icon URL',
                     'field_icon_description' => 'Optional: enter a custom image URL; leave empty to use the default SwapWallet icon.',
+                    'field_icon_size_title' => 'Icon size (px)',
+                    'field_icon_size_description' => 'Width of the icon shown on classic checkout and blocks. Height stays auto to keep the aspect ratio.',
                     'error_gateway_connect' => 'SwapWallet connection error. Please try again later.',
                     'payment_error_prefix' => 'Payment error: ',
                     'generic_error' => 'An error occurred',
@@ -648,6 +661,29 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
         public function get_description()
         {
             return $this->description;
+        }
+
+        public function get_icon()
+        {
+            if (!$this->show_icon || empty($this->icon)) {
+                return '';
+            }
+
+            $size = max(8, min(256, (int) $this->icon_size));
+            $style = sprintf(
+                'style="width:%dpx;height:auto;max-height:%dpx;object-fit:contain;border-radius:8px;"',
+                $size,
+                $size
+            );
+
+            $icon_html = sprintf(
+                '<img src="%s" alt="%s" %s />',
+                esc_url($this->icon),
+                esc_attr($this->title),
+                $style
+            );
+
+            return apply_filters('woocommerce_gateway_icon', $icon_html, $this->id);
         }
     }
 }

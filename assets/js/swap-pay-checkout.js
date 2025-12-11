@@ -6,6 +6,10 @@ const lang = (swap_pay_settings.language || "fa").toLowerCase();
 const show_icon =
   swap_pay_settings.show_icon !== false &&
   swap_pay_settings.show_icon !== "no";
+const icon_size = Math.min(
+  256,
+  Math.max(8, parseInt(swap_pay_settings.icon_size, 10) || 40)
+);
 
 const fallbackTitle =
   (lang === "en"
@@ -31,10 +35,10 @@ const Swap_Pay_icon = hasIcon
       style: {
         marginInlineStart: "10px",
         display: "inline-block",
-        width: "40px",
+        width: `${icon_size}px`,
         height: "auto",
-        maxWidth: "64px",
-        maxHeight: "64px",
+        maxWidth: `${icon_size}px`,
+        maxHeight: `${icon_size}px`,
         objectFit: "contain",
         borderRadius: "8px",
       },

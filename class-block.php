@@ -43,6 +43,8 @@ final class Swap_Pay_Gateway_Blocks extends AbstractPaymentMethodType
         $description = method_exists($this->gateway, 'get_description') ? $this->gateway->get_description() : ($this->gateway->description ?? '');
         $language = method_exists($this->gateway, 'get_language') ? $this->gateway->get_language() : 'fa';
         $show_icon = $this->gateway->get_option('show_icon', 'yes') === 'yes';
+        $icon_size = (int) $this->gateway->get_option('icon_size', 40);
+        $icon_size = max(8, min(256, $icon_size));
 
         return [
             'title' => $title,
@@ -50,6 +52,7 @@ final class Swap_Pay_Gateway_Blocks extends AbstractPaymentMethodType
             'icon' => $show_icon ? ($this->gateway->icon ?? '') : '',
             'language' => $language,
             'show_icon' => $show_icon,
+            'icon_size' => $icon_size,
             'fallbacks' => [
                 'label_fa' => $this->gateway->get_text('gateway_title', 'fa'),
                 'label_en' => $this->gateway->get_text('gateway_title', 'en'),
