@@ -20,6 +20,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
         private $show_icon;
         private $temp_allowed_host;
         private $icon_size;
+        private $hide_gateway_errors;
+        private $custom_error_message;
 
         public function __construct()
         {
@@ -56,6 +58,8 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             $this->icon_url = $this->get_option('icon_url', '');
             $this->icon_size = absint($this->get_option('icon_size', 40));
             $this->icon_size = $this->icon_size > 0 ? $this->icon_size : 40;
+            $this->hide_gateway_errors = $this->get_option('hide_gateway_errors', 'no') === 'yes';
+            $this->custom_error_message = $this->get_option('custom_error_message', '');
 
             if (!empty(trim($this->icon_url))) {
                 $this->icon = esc_url_raw($this->icon_url);
@@ -162,6 +166,19 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'description' => $this->t('field_failed_description'),
                     'default' => $this->get_lang_text('failed_message'),
                 ],
+                'hide_gateway_errors' => [
+                    'title' => $this->t('field_hide_errors_title'),
+                    'label' => $this->t('field_hide_errors_label'),
+                    'type' => 'checkbox',
+                    'default' => 'no',
+                    'description' => $this->t('field_hide_errors_description'),
+                ],
+                'custom_error_message' => [
+                    'title' => $this->t('field_custom_error_message_title'),
+                    'type' => 'textarea',
+                    'description' => $this->t('field_custom_error_message_description'),
+                    'default' => $this->get_lang_text('default_masked_error_message'),
+                ],
                 'show_icon' => [
                     'title' => $this->t('field_show_icon_title'),
                     'label' => $this->t('field_show_icon_label'),
@@ -245,7 +262,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
 
             if (is_wp_error($response)) {
                 $this->log('Invoice creation failed (http error)', ['order_id' => $order_id, 'error' => $response->get_error_message()], 'error');
-                wc_add_notice($this->t('error_gateway_connect'), 'error');
+                $this->add_gateway_error_notice($this->t('error_gateway_connect'));
                 return [
                     'result' => 'failure',
                     'error' => $response->get_error_message(),
@@ -267,7 +284,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                 }
 
                 $errorMessage = $response['error']['localizedMessage'] ?? $this->t('generic_error');
-                wc_add_notice($this->t('payment_error_prefix') . $errorMessage, 'error');
+                $this->add_gateway_error_notice($this->t('payment_error_prefix') . $errorMessage);
                 return [
                     'result' => 'failure',
                     'error' => $errorMessage,
@@ -277,7 +294,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             $paymentUrl = $response['result']['paymentUrl'] ?? null;
             if (!$paymentUrl) {
                 $this->log('Missing paymentUrl in invoice response', ['order_id' => $order_id, 'response' => $response], 'warning');
-                wc_add_notice($this->t('missing_payment_url'), 'error');
+                $this->add_gateway_error_notice($this->t('missing_payment_url'));
                 return [
                     'result' => 'failure',
                     'error' => 'missing payment url',
@@ -427,7 +444,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             $Notice = wpautop(wptexturize($this->failed_massage));
             $Notice = str_replace("{support_code}", $support_code, $Notice);
             $Notice = str_replace("{fault}", $Message, $Notice);
-            wc_add_notice($Notice, 'error');
+            $this->add_gateway_error_notice($Notice);
             $this->safe_redirect(wc_get_checkout_url());
         }
 
@@ -435,7 +452,26 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
         {
             $Notice = wpautop(wptexturize($this->failed_massage));
             $Notice = str_replace("{fault}", $message, $Notice);
-            wc_add_notice($Notice, 'error');
+            $this->add_gateway_error_notice($Notice);
+        }
+
+        private function add_gateway_error_notice($message, $type = 'error')
+        {
+            if ($this->hide_gateway_errors) {
+                $message = $this->get_masked_error_message();
+            }
+
+            wc_add_notice($message, $type);
+        }
+
+        private function get_masked_error_message()
+        {
+            $custom = trim((string) $this->custom_error_message);
+            if ($custom === '') {
+                $custom = $this->t('default_masked_error_message');
+            }
+
+            return wpautop(wptexturize($custom));
         }
 
         public function allow_temp_redirect_host($hosts)
@@ -503,6 +539,11 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_success_description' => 'متن پیامی که میخواهید بعد از پرداخت موفق نمایش داده شود. از {support_code} برای نمایش کد رهگیری استفاده کنید.',
                     'field_failed_title' => 'پیام پرداخت ناموفق',
                     'field_failed_description' => 'متن پیامی که میخواهید بعد از پرداخت ناموفق نمایش داده شود. از {fault} برای دلیل خطا و {support_code} برای کد رهگیری استفاده کنید.',
+                    'field_hide_errors_title' => 'مخفی کردن خطاهای سواپ‌ولت',
+                    'field_hide_errors_label' => 'عدم نمایش جزئیات خطا به کاربر',
+                    'field_hide_errors_description' => 'در صورت فعال بودن، خطاهای درگاه به کاربر نمایش داده نمی‌شوند و پیام جایگزین زیر نشان داده می‌شود.',
+                    'field_custom_error_message_title' => 'پیام خطای جایگزین',
+                    'field_custom_error_message_description' => 'اگر گزینه بالا فعال باشد، این متن به کاربر نمایش داده می‌شود. در صورت خالی بودن، پیام پیش‌فرض استفاده می‌شود.',
                     'field_show_icon_title' => 'نمایش آیکن در صفحه پرداخت',
                     'field_show_icon_label' => 'آیکن نمایش داده شود',
                     'field_show_icon_description' => 'برای مخفی کردن آیکن در تسویه‌حساب کلاسیک و بلاک‌ها، تیک را بردارید.',
@@ -510,6 +551,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_icon_description' => 'در صورت تمایل آدرس تصویر دلخواه را وارد کنید، در غیر این صورت آیکن پیش‌فرض سواپ‌ولت نمایش داده می‌شود.',
                     'field_icon_size_title' => 'اندازه آیکن (پیکسل)',
                     'field_icon_size_description' => 'عرض آیکن نمایش داده‌شده در تسویه‌حساب کلاسیک و بلاک‌ها. برای حفظ تناسب، ارتفاع به‌صورت خودکار تنظیم می‌شود.',
+                    'default_masked_error_message' => 'پرداخت انجام نشد. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
                     'error_gateway_connect' => 'خطای ارتباط با درگاه سواپ‌ولت. لطفاً بعداً تلاش کنید.',
                     'payment_error_prefix' => 'خطای پرداخت: ',
                     'generic_error' => 'خطایی رخ داد',
@@ -551,6 +593,11 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_success_description' => 'Text shown after successful payment. Use {support_code} to show the tracking code.',
                     'field_failed_title' => 'Failed payment message',
                     'field_failed_description' => 'Text shown after failed payment. Use {fault} for the error reason and {support_code} for the tracking code.',
+                    'field_hide_errors_title' => 'Hide SwapWallet errors',
+                    'field_hide_errors_label' => 'Do not show gateway error details to shoppers',
+                    'field_hide_errors_description' => 'When enabled, gateway errors are hidden and the replacement message below is shown instead.',
+                    'field_custom_error_message_title' => 'Replacement error message',
+                    'field_custom_error_message_description' => 'If hiding errors is enabled, this text is shown to the shopper. If left empty, a default message will be used.',
                     'field_show_icon_title' => 'Show icon on checkout',
                     'field_show_icon_label' => 'Display the SwapWallet icon on checkout',
                     'field_show_icon_description' => 'Uncheck to hide the icon in both classic and blocks checkout.',
@@ -558,6 +605,7 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                     'field_icon_description' => 'Optional: enter a custom image URL; leave empty to use the default SwapWallet icon.',
                     'field_icon_size_title' => 'Icon size (px)',
                     'field_icon_size_description' => 'Width of the icon shown on classic checkout and blocks. Height stays auto to keep the aspect ratio.',
+                    'default_masked_error_message' => 'Payment could not be completed. Please try again or contact support.',
                     'error_gateway_connect' => 'SwapWallet connection error. Please try again later.',
                     'payment_error_prefix' => 'Payment error: ',
                     'generic_error' => 'An error occurred',
