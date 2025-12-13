@@ -291,7 +291,19 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                 ];
             }
 
-            $paymentUrl = $response['result']['paymentUrl'] ?? null;
+            $paymentLinks = $response['result']['paymentLinks'] ?? [];
+            if (!is_array($paymentLinks)) {
+                $paymentLinks = [];
+            }
+
+            $paymentUrl = null;
+            foreach ($paymentLinks as $link) {
+                if (($link['type'] ?? null) === 'WEBSITE' && !empty($link['url'])) {
+                    $paymentUrl = $link['url'];
+                    break;
+                }
+            }
+
             if (!$paymentUrl) {
                 $this->log('Missing paymentUrl in invoice response', ['order_id' => $order_id, 'response' => $response], 'warning');
                 $this->add_gateway_error_notice($this->t('missing_payment_url'));

@@ -28,10 +28,21 @@ jobs:
         env:
           VERSION: ${{ steps.vars.outputs.version }}
         run: |
+          set -euo pipefail
+          if [ -z "$VERSION" ]; then
+            echo "VERSION is empty (did you push a tag like v1.2.3?)." >&2
+            exit 1
+          fi
+          echo "Setting version to $VERSION"
           perl -pi -e "s/^(Version:\s*).*/\$1$ENV{VERSION}/" index.php
           perl -pi -e "s/^(Stable tag:\s*).*/\$1$ENV{VERSION}/" index.php
           perl -pi -e "s/^(Stable tag:\s*).*/\$1$ENV{VERSION}/" readme.txt
           perl -pi -e "s/define\\('SWAPPAY_VERSION',\\s*'[^']+'\\);/define('SWAPPAY_VERSION', '$ENV{VERSION}');/" index.php
+          echo "Header after bump:"
+          grep -n "Version:" index.php || true
+          grep -n "Stable tag:" index.php || true
+          grep -n "SWAPPAY_VERSION" index.php || true
+          grep -n "Stable tag:" readme.txt || true
 
       - name: Create zip archive
         run: |
