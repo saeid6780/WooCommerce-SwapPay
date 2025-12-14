@@ -251,31 +251,55 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                 'callback' => $CallbackURL,
             ]);
 
+            $userId = $order->get_user_id();
+            $userEmail = $order->get_billing_email();
+            $userPhone = $order->get_billing_phone();
+
+            $firstName = $order->get_billing_first_name();
+            $lastName = $order->get_billing_last_name();
+            $descriptionName = trim(trim($firstName . ' ' . $lastName));
+            $description = $order_id . '-' . ($descriptionName !== '' ? $descriptionName : 'customer');
+
+            $payload = [
+                'amount' => [
+                    'number' => $price,
+                    'unit' => $currency,
+                ],
+                'allowedTokens' => [
+                    [
+                        'token' => 'USDT',
+                        'network' => $this->network,
+                    ],
+                ],
+                'feePayer' => 'USER',
+                'ttl' => $this->ttl,
+                'userLanguage' => strtoupper($this->language),
+                'underPaidCoveragePercent' => $this->underPaidCoveragePercent,
+                'returnUrl' => $CallbackURL,
+                'orderId' => $order_id,
+                'webhookUrl' => add_query_arg('rest_route', '/swap-pay/v1/webhook', home_url('/')),
+                'customData' => null,
+                'description' => $description,
+            ];
+
+            if (!empty($userId)) {
+                $payload['userId'] = $userId;
+            }
+
+            if (!empty($userEmail)) {
+                $payload['userEmail'] = $userEmail;
+            }
+
+            if (!empty($userPhone)) {
+                $payload['userPhoneNumber'] = $userPhone;
+            }
+
             $response = wp_remote_post('https://swapwallet.app/api/v2/payment/' . $this->username . '/invoices', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->api_key,
                     'Content-Type' => 'application/json'
                 ],
-                'body' => wp_json_encode([
-                    'amount' => [
-                        'number' => $price,
-                        'unit' => $currency,
-                    ],
-                    'allowedTokens' => [
-                        [
-                            'token' => 'USDT',
-                            'network' => $this->network,
-                        ],
-                    ],
-                    'feePayer' => 'USER',
-                    'ttl' => $this->ttl,
-                    'userLanguage' => strtoupper($this->language),
-                    'underPaidCoveragePercent' => $this->underPaidCoveragePercent,
-                    'returnUrl' => $CallbackURL,
-                    'orderId' => $order_id,
-                    'webhookUrl' => add_query_arg('rest_route', '/swap-pay/v1/webhook', home_url('/')),
-                    'customData' => null,
-                ])
+                'body' => wp_json_encode($payload)
             ]);
 
             if (is_wp_error($response)) {
