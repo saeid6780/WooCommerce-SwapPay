@@ -94,6 +94,24 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             parent::admin_options();
         }
 
+        /**
+         * Save settings while keeping API key unchanged when left blank.
+         * This makes the API key effectively write-only in the UI.
+         */
+        public function process_admin_options()
+        {
+            $post_data = $this->get_post_data();
+            $api_key_field = $this->get_field_key('api_key');
+            $api_key_submitted = isset($post_data[$api_key_field]) ? trim((string) $post_data[$api_key_field]) : null;
+
+            // If left blank, preserve existing key by injecting current value before parent processing.
+            if ($api_key_submitted === '' || $api_key_submitted === null) {
+                $_POST[$api_key_field] = $this->get_option('api_key');
+            }
+
+            return parent::process_admin_options();
+        }
+
         public function init_form_fields()
         {
             $this->form_fields = [
@@ -134,8 +152,9 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
                 ],
                 'api_key' => [
                     'title' => $this->t('field_api_key_title'),
-                    'type' => 'text',
-                    'default' => 'apikey-aaaabbbbccccdddd'
+                    'type' => 'password', // one-time entry; stays empty on subsequent loads
+                    'default' => '',
+                    'placeholder' => '********',
                 ],
                 'language' => [
                     'title' => $this->t('field_language_title'),
