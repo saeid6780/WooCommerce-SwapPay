@@ -233,9 +233,74 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
             } else if (strtolower($currency) === strtolower('IRHR')) {
                 $price *= 100;
                 $currency = 'IRT';
+            } else if( strtolower($currency) !== strtolower('UST') ){
+
+                if( is_plugin_active( 'woocommerce-currency-switcher/index.php' ) ){
+                    $currencies = $this->get_woocs_currencies();
+
+                    if ( ! empty($currencies) && is_array($currencies) && count($currencies) >= 2) {
+                        $no_cents = $this->init_no_cents($currencies);
+                        $storage = new WOOCS_STORAGE(get_option('woocs_storage', 'transient'));
+                        $current_currency = sanitize_text_field(esc_html($storage->get_val('woocs_current_currency')));
+                        if (in_array($current_currency, $no_cents))
+                            $precision = 0;
+                         else
+                             $precision = $this->get_woocs_currency_price_num_decimals($current_currency);
+
+                        if ($current_currency) {
+                            //Edited this line to set default convertion of currency
+                            if (isset($currencies[$current_currency]) AND $currencies[$current_currency] != NULL And ! empty($currencies['USD']) )
+                                $price = number_format(floatval(((float) $price / (float) $currencies[$current_currency]['rate'] ) * (float) $currencies['USD']['rate']), $precision,'.', '');
+                            $currency='USD';
+
+                        }
+                    }
+
+                }
             }
 
             return [$price, $currency];
+        }
+
+        public function get_woocs_currency_price_num_decimals($currency, $val = 2) {
+            $currencies = $this->get_woocs_currencies();
+            if (isset($currencies[$currency]['decimals'])) {
+                $val = $currencies[$currency]['decimals'];
+            }
+            return intval($val);
+        }
+
+        public function get_woocs_currencies() {
+
+            $currencies = get_option('woocs', array());
+
+            if (count($currencies) > 2) {
+                $currencies = array_slice($currencies, 0, 2);
+            }
+
+            return $currencies;
+        }
+
+        private function init_no_cents($currencies) {
+            $no_cents = get_option('woocs_no_cents', '');
+            $no_cents_array = ['JPY', 'TWD'];
+
+            if (!empty($currencies) AND is_array($currencies)) {
+                $currencies = array_keys($currencies);
+                $currencies = array_map('strtolower', $currencies);
+                if (!empty($no_cents)) {
+                    $no_cents = explode(',', $no_cents);
+                    if (!empty($no_cents) AND is_array($no_cents)) {
+                        foreach ($no_cents as $value) {
+                            if (in_array(strtolower($value), $currencies)) {
+                                $no_cents_array = $value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $no_cents_array;
         }
 
         public function process_payment($order_id)
@@ -323,6 +388,9 @@ if (class_exists('WC_Payment_Gateway') && !class_exists('SwapPay_WC_Gateway')) {
 
                 $result = $this->handle_duplicated_order_id($order, $order_id, $errorCodeString);
                 if ($result !== null) {
+                    if ( $result['result']==='failure')
+                        $this->add_gateway_error_notice($result['error']);
+
                     return $result;
                 }
 
